@@ -1,42 +1,20 @@
-const { QuickDB } = require("quick.db");
-const db = new QuickDB();
-const { EmbedBuilder, ChannelType } = require("discord.js");
+const { JsonDatabase } = require("wio.db");
+const db = new JsonDatabase({ databasePath: "./database.json" });
 
 module.exports = {
     name: "setwelcomechannel",
-    aliases: ["setwc", "setwelcome"],
-    description: "Establece el canal de bienvenida para el servidor",
-    usage: "!setwelcomechannel <#canal>",
+    description: "Configura el canal de bienvenida",
     run: async (client, message, args) => {
-        if (!message.member.permissions.has("Administrator")) {
-            return message.channel.send({
-                embeds: [
-                    new EmbedBuilder()
-                        .setColor("Red")
-                        .setDescription("❌ No tienes permisos para usar este comando.")
-                ]
-            });
+        if (!message.member.permissions.has("MANAGE_GUILD")) {
+            return message.reply("❌ No tienes permisos para usar este comando.");
         }
 
-        const channel = message.mentions.channels.first() || message.guild.channels.cache.get(args[0]);
-        if (!channel || channel.type !== ChannelType.GuildText) {
-            return message.channel.send({
-                embeds: [
-                    new EmbedBuilder()
-                        .setColor("Yellow")
-                        .setDescription("⚠️ Debes mencionar un canal de texto válido.")
-                ]
-            });
+        const channel = message.mentions.channels.first();
+        if (!channel) {
+            return message.reply("❌ Debes mencionar un canal válido.");
         }
 
-        await db.set(`welcomeChannel_${message.guild.id}`, channel.id);
-
-        return message.channel.send({
-            embeds: [
-                new EmbedBuilder()
-                    .setColor("Green")
-                    .setDescription(`✅ Canal de bienvenida establecido en ${channel}`)
-            ]
-        });
+        db.set(`welcomeChannel_${message.guild.id}`, channel.id);
+        message.reply(`✅ Canal de bienvenida establecido en ${channel}`);
     }
 };

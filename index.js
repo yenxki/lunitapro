@@ -46,4 +46,8 @@ const loadEvents = (dir = "./events") => {
 loadCommands();
 loadEvents();
 
+client.on("guildMemberAdd", member => {
+    require("./events/guildMemberAdd.js")(client, member);
+});
+
 client.login(process.env.DISCORD_TOKEN);
