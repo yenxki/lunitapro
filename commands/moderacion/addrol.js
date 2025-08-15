@@ -1,7 +1,7 @@
 const { PermissionsBitField, EmbedBuilder } = require("discord.js");
 
 module.exports = {
-    name: "darroll",
+    name: "addrole",
     aliases: ["agregarrol", "giverol", "addrol"],
     category: "Moderación",
     description: "Asigna un rol a un usuario",
