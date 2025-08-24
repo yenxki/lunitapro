@@ -28,4 +28,21 @@ client.config = config;
 loadCommands(client, path.join(__dirname, "commands"));
 loadEvents(client, path.join(__dirname, "events"));
 
+// ----------------- PRESENCIA DEL BOT -----------------
+client.on("ready", () => {
+    console.log(`${client.user.tag} está online!`);
+
+    const prefix = client.config.prefix || "!";
+    const cherryEmoji = "<:cherryblossomspin:1409020018443681834>";
+
+    client.user.setPresence({
+        activities: [{
+            name: `Usa ${prefix}help para ver todos mis comandos ${cherryEmoji}`,
+            type: 0 // Playing
+        }],
+        status: "online"
+    });
+});
+// ------------------------------------------------------
+
 client.login(config.token);
