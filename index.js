@@ -1,34 +1,31 @@
-const { Client, GatewayIntentBits, Partials, Collection } = require('discord.js');
-const fs = require('fs');
-const path = require('path');
-const config = require('./config.json');
+import { Client, GatewayIntentBits, Partials, Collection } from "discord.js";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
+import { loadCommands } from "./utils/loadCommands.js";
+import { loadEvents } from "./utils/loadEvents.js";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Leer config.json usando fs
+const config = JSON.parse(fs.readFileSync("./config.json", "utf8"));
 
 const client = new Client({
-  intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMembers,
-    GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent
-  ],
-  partials: [Partials.Channel, Partials.Message, Partials.User, Partials.GuildMember]
+    intents: [
+        GatewayIntentBits.Guilds,
+        GatewayIntentBits.GuildMembers,
+        GatewayIntentBits.GuildMessages,
+        GatewayIntentBits.MessageContent
+    ],
+    partials: [Partials.Message, Partials.Channel, Partials.Reaction]
 });
 
 client.commands = new Collection();
-client.buttons = new Collection();
+client.config = config;
 
-// Cargar comandos
-const commandsPath = path.join(__dirname, 'commands');
-for (const file of fs.readdirSync(commandsPath).filter(f => f.endsWith('.js'))) {
-  const cmd = require(path.join(commandsPath, file));
-  client.commands.set(cmd.name, cmd);
-}
-
-// Cargar eventos
-const eventsPath = path.join(__dirname, 'events');
-for (const file of fs.readdirSync(eventsPath).filter(f => f.endsWith('.js'))) {
-  const evt = require(path.join(eventsPath, file));
-  if (evt.once) client.once(evt.name, (...args) => evt.execute(...args, client));
-  else client.on(evt.name, (...args) => evt.execute(...args, client));
-}
+// Cargar comandos y eventos
+loadCommands(client, path.join(__dirname, "commands"));
+loadEvents(client, path.join(__dirname, "events"));
 
 client.login(config.token);

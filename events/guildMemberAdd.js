@@ -1,33 +1,24 @@
-const { EmbedBuilder } = require('discord.js');
-const { getGuildConfig } = require('../utils/db');
+import { EmbedBuilder } from "discord.js";
+import fs from "fs";
+const dataPath = "./data/guilds.json";
 
-module.exports = {
-  name: 'guildMemberAdd',
-  async execute(member) {
-    const cfg = getGuildConfig(member.guild.id);
-    if (!cfg.welcomeChannelId) return;
-    const channel = member.guild.channels.cache.get(cfg.welcomeChannelId);
-    if (!channel) return;
+export default {
+    name: "guildMemberAdd",
+    async execute(member) {
+        const guildsConfig = JSON.parse(fs.readFileSync(dataPath, "utf8"));
+        const guildConfig = guildsConfig[member.guild.id] || {};
 
-    const embed = new EmbedBuilder()
-      .setColor(0x5865F2)
-      .setAuthor({ name: `¡Bienvenid@, ${member.user.username}!`, iconURL: member.user.displayAvatarURL({ size: 256 }) })
-      .setThumbnail(member.user.displayAvatarURL({ size: 256 }))
-      .setTitle('＜:Verify:1403559836096004206＞ ¡Te damos la bienvenida!')
-      .setDescription([
-        `¡Hola ${member}!`,
-        'Nos alegra tenerte aquí en **' + member.guild.name + '** ✨',
-        '• Lee las reglas y preséntate.',
-        '• Reacciona a los anuncios y participa en la comunidad.',
-        '• Si te gusta el contenido de **Gerasaurio**, ¡apoya y comparte!'
-      ].join('\n'))
-      .addFields(
-        { name: 'Consejos', value: 'Usa `!help` para ver todos los comandos.\nConfigura tus notificaciones y échale un ojo a los canales fijados.' },
-        { name: 'Cuenta', value: `Creada: <t:${Math.floor(member.user.createdTimestamp/1000)}:R>` }
-      )
-      .setFooter({ text: 'Lunita — bot oficial de la comunidad', iconURL: member.client.user.displayAvatarURL() })
-      .setTimestamp();
+        const channelName = guildConfig.welcomeChannel || "bienvenida";
+        const channel = member.guild.channels.cache.find(ch => ch.name === channelName);
+        if (!channel) return;
 
-    channel.send({ embeds: [embed] }).catch(() => {});
-  }
+        const embed = new EmbedBuilder()
+            .setColor(0x00AE86)
+            .setTitle("🎉 ¡Bienvenido!")
+            .setDescription(`Hola ${member.user}, ¡bienvenido/a a **${member.guild.name}**!\n\nEsperamos que la pases increíble. No olvides leer las reglas y presentarte.`)
+            .setThumbnail(member.user.displayAvatarURL({ dynamic: true }))
+            .setFooter({ text: `Miembro número ${member.guild.memberCount}` });
+
+        channel.send({ embeds: [embed] });
+    }
 };
