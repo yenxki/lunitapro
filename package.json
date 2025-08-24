@@ -1,16 +1,17 @@
 {
   "name": "lunita-bot",
   "version": "1.0.0",
-  "description": "Bot de Discord Lunita",
+  "description": "Lunita - Bot de Discord para Gerasaurio (TikTok) con Discord.js v14",
   "main": "index.js",
+  "type": "commonjs",
   "scripts": {
     "start": "node index.js"
   },
+  "author": "Lunita",
+  "license": "MIT",
   "dependencies": {
-    "discord.js": "^14.15.3",
-    "dotenv": "^16.4.5",
+    "discord.js": "^14.22.1",
     "fs-extra": "^11.2.0",
-    "uuid": "^9.0.1",
-    "wio.db": "^4.0.22"
+    "path": "^0.12.7"
   }
 }

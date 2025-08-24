@@ -1,51 +1,34 @@
-const { Client, GatewayIntentBits, Partials, Collection } = require("discord.js");
-const fs = require("fs");
-const path = require("path");
-require("dotenv").config();
-const config = require("./config.json");
-const prefixManager = require("./utils/prefixManager");
+const { Client, GatewayIntentBits, Partials, Collection } = require('discord.js');
+const fs = require('fs');
+const path = require('path');
+const config = require('./config.json');
 
 const client = new Client({
-    intents: [
-        GatewayIntentBits.Guilds,
-        GatewayIntentBits.GuildMessages,
-        GatewayIntentBits.MessageContent,
-        GatewayIntentBits.GuildMembers
-    ],
-    partials: [Partials.Message, Partials.Channel, Partials.Reaction]
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMembers,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent
+  ],
+  partials: [Partials.Channel, Partials.Message, Partials.User, Partials.GuildMember]
 });
 
 client.commands = new Collection();
-client.aliases = new Collection();
+client.buttons = new Collection();
 
-// Handler de comandos
-const loadCommands = (dir = "./commands") => {
-    fs.readdirSync(dir).forEach(subDir => {
-        const files = fs.readdirSync(`${dir}/${subDir}`).filter(file => file.endsWith(".js"));
-        for (const file of files) {
-            const command = require(`${dir}/${subDir}/${file}`);
-            client.commands.set(command.name, command);
-            if (command.aliases) {
-                command.aliases.forEach(alias => client.aliases.set(alias, command.name));
-            }
-        }
-    });
-};
+// Cargar comandos
+const commandsPath = path.join(__dirname, 'commands');
+for (const file of fs.readdirSync(commandsPath).filter(f => f.endsWith('.js'))) {
+  const cmd = require(path.join(commandsPath, file));
+  client.commands.set(cmd.name, cmd);
+}
 
-// Handler de eventos
-const loadEvents = (dir = "./events") => {
-    const eventFiles = fs.readdirSync(dir).filter(file => file.endsWith(".js"));
-    for (const file of eventFiles) {
-        const event = require(`${dir}/${file}`);
-        const eventName = file.split(".")[0];
-        client.on(eventName, (...args) => event(client, ...args));
-    }
-};
+// Cargar eventos
+const eventsPath = path.join(__dirname, 'events');
+for (const file of fs.readdirSync(eventsPath).filter(f => f.endsWith('.js'))) {
+  const evt = require(path.join(eventsPath, file));
+  if (evt.once) client.once(evt.name, (...args) => evt.execute(...args, client));
+  else client.on(evt.name, (...args) => evt.execute(...args, client));
+}
 
-// Cargar todo
-loadCommands();
-loadEvents();
-
-
-
-client.login(process.env.DISCORD_TOKEN);
+client.login(config.token);

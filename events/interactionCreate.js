@@ -1,111 +1,198 @@
-const { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, EmbedBuilder } = require("discord.js");
-const questions = require("../utils/questions");
-const economyManager = require("../utils/economyManager");
-const verificationManager = require("../utils/verificationManager");
-const { v4: uuidv4 } = require("uuid");
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, PermissionFlagsBits } = require('discord.js');
+const { getGuildConfig } = require('../utils/db');
 
-module.exports = async (client, interaction) => {
-    // --- Botón de economía ---
-    if (interaction.isButton()) {
-        if (interaction.customId.startsWith("gera_")) {
-            const userId = interaction.customId.split("_")[1];
-            if (interaction.user.id !== userId) {
-                return interaction.reply({ content: "❌ Este botón no es para ti.", ephemeral: true });
-            }
+function paginateEmbed(embeds, page) {
+  const total = embeds.length;
+  const index = ((page % total) + total) % total;
+  return { embed: embeds[index], index, total };
+}
 
-            const randomQuestion = questions[Math.floor(Math.random() * questions.length)];
-            const modal = new ModalBuilder()
-                .setCustomId(`geraModal_${userId}`)
-                .setTitle("Pregunta rápida");
+module.exports = {
+  name: 'interactionCreate',
+  async execute(interaction, client) {
+    if (!interaction.isButton()) return;
 
-            const input = new TextInputBuilder()
-                .setCustomId("answer")
-                .setLabel(randomQuestion.question)
-                .setStyle(TextInputStyle.Short)
-                .setRequired(true);
+    const [scope, action, ...rest] = interaction.customId.split(':');
 
-            const row = new ActionRowBuilder().addComponents(input);
-            modal.addComponents(row);
+    // --- HELP PAGINATION ---
+    if (scope === 'help') {
+      const page = parseInt(rest[0] || '0', 10);
+      const embeds = client.helpEmbeds?.[interaction.message.id];
+      if (!embeds) return interaction.deferUpdate();
 
-            interaction.showModal(modal);
-            client.tempQuestions = client.tempQuestions || {};
-            client.tempQuestions[userId] = randomQuestion.answer.toLowerCase();
-        }
+      const { embed, index, total } = paginateEmbed(embeds, action === 'next' ? page + 1 : page - 1);
 
-        // --- Botón de verificación ---
-        if (interaction.customId === "startVerify") {
-            const config = verificationManager.getConfig(interaction.guild.id);
-            if (!config) {
-                return interaction.reply({ content: "❌ El sistema de verificación no está configurado.", ephemeral: true });
-            }
+      const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId(`help:prev:${index}`)
+          .setEmoji({ name: 'arrow_left', id: '1403777608138887189' })
+          .setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder()
+          .setCustomId(`help:next:${index}`)
+          .setEmoji({ name: 'arrow_right', id: '1403777582440251393' })
+          .setStyle(ButtonStyle.Secondary)
+      );
 
-            if (verificationManager.isVerified(interaction.guild.id, interaction.user.id)) {
-                return interaction.reply({ content: "✅ Ya estás verificado.", ephemeral: true });
-            }
-
-            const code = uuidv4().split("-")[0]; // código corto
-            client.tempVerifyCodes = client.tempVerifyCodes || {};
-            client.tempVerifyCodes[interaction.user.id] = code.toLowerCase();
-
-            const modal = new ModalBuilder()
-                .setCustomId(`verifyModal_${interaction.user.id}`)
-                .setTitle("Verificación");
-
-            const input = new TextInputBuilder()
-                .setCustomId("verifyCode")
-                .setLabel(`Escribe este código: ${code}`)
-                .setStyle(TextInputStyle.Short)
-                .setRequired(true);
-
-            modal.addComponents(new ActionRowBuilder().addComponents(input));
-            interaction.showModal(modal);
-        }
+      await interaction.update({ embeds: [embed], components: [row] });
+      return;
     }
 
-    // --- Modal de economía ---
-    if (interaction.isModalSubmit()) {
-        if (interaction.customId.startsWith("geraModal_")) {
-            const userId = interaction.customId.split("_")[1];
-            const givenAnswer = interaction.fields.getTextInputValue("answer").toLowerCase();
-            const correctAnswer = client.tempQuestions?.[userId];
+    // --- REDES PAGINATION ---
+    if (scope === 'redes') {
+      const page = parseInt(rest[0] || '0', 10);
+      const embeds = client.redesEmbeds?.[interaction.message.id];
+      if (!embeds) return interaction.deferUpdate();
 
-            if (interaction.user.id !== userId) {
-                return interaction.reply({ content: "❌ Este modal no es para ti.", ephemeral: true });
-            }
+      const { embed, index } = paginateEmbed(embeds, action === 'next' ? page + 1 : page - 1);
 
-            if (givenAnswer === correctAnswer) {
-                economyManager.addBalance(userId, interaction.guild.id, 50);
-                const embed = new EmbedBuilder().setColor("Green").setTitle("✅ ¡Correcto!").setDescription("Has ganado **50 monedas** 🎉");
-                return interaction.reply({ embeds: [embed] });
-            } else {
-                const embed = new EmbedBuilder().setColor("Red").setTitle("❌ Incorrecto").setDescription("No has ganado nada esta vez.");
-                return interaction.reply({ embeds: [embed] });
-            }
-        }
+      const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId(`redes:prev:${index}`)
+          .setEmoji({ name: 'arrow_left', id: '1403777608138887189' })
+          .setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder()
+          .setCustomId(`redes:next:${index}`)
+          .setEmoji({ name: 'arrow_right', id: '1403777582440251393' })
+          .setStyle(ButtonStyle.Secondary)
+      );
 
-        // --- Modal de verificación ---
-        if (interaction.customId.startsWith("verifyModal_")) {
-            const userId = interaction.customId.split("_")[1];
-            const givenCode = interaction.fields.getTextInputValue("verifyCode").toLowerCase();
-            const correctCode = client.tempVerifyCodes?.[userId];
-
-            if (interaction.user.id !== userId) {
-                return interaction.reply({ content: "❌ Este modal no es para ti.", ephemeral: true });
-            }
-
-            if (givenCode === correctCode) {
-                const config = verificationManager.getConfig(interaction.guild.id);
-                const role = interaction.guild.roles.cache.get(config.roleId);
-
-                if (role) await interaction.member.roles.add(role).catch(() => {});
-                verificationManager.markVerified(interaction.guild.id, interaction.user.id);
-
-                const embed = new EmbedBuilder().setColor("Green").setTitle("✅ Verificado").setDescription("¡Bienvenido! Ahora tienes acceso al servidor.");
-                return interaction.reply({ embeds: [embed], ephemeral: true });
-            } else {
-                const embed = new EmbedBuilder().setColor("Red").setTitle("❌ Código incorrecto").setDescription("Intenta nuevamente.");
-                return interaction.reply({ embeds: [embed], ephemeral: true });
-            }
-        }
+      await interaction.update({ embeds: [embed], components: [row] });
+      return;
     }
+
+    // --- GIVEAWAY BUTTONS ---
+    if (scope === 'give') {
+      const sub = action; // join | start
+      const ownerId = rest[0];
+      const stamp = rest[1]; // unique ID to avoid collisions per message
+
+      // Recuperar estado guardado en caché del cliente
+      const entry = client.giveaways?.get(stamp);
+      if (!entry) return interaction.reply({ ephemeral: true, embeds: [
+        new EmbedBuilder().setColor(0xE67E22).setTitle('＜:notice:1403559870656942134＞ Sorteo no encontrado')
+      ]});
+
+      // JOIN
+      if (sub === 'join') {
+        const userId = interaction.user.id;
+        if (entry.participants.some(p => p.id === userId)) {
+          return interaction.reply({
+            ephemeral: true,
+            embeds: [new EmbedBuilder().setColor(0xF1C40F).setDescription('Ya estás participando. ¡Suerte!')]
+          });
+        }
+        entry.participants.push({ id: userId, tag: interaction.user.tag });
+        client.giveaways.set(stamp, entry);
+
+        // actualizar embed con lista
+        const list = entry.participants.map((p, i) => `**${i + 1}.** <@${p.id}>`).join('\n') || '*Sin participantes aún*';
+
+        const updated = EmbedBuilder.from(entry.baseEmbed)
+          .setFields(
+            { name: 'Participantes', value: list, inline: false },
+            { name: 'Autor del sorteo', value: `<@${entry.ownerId}>`, inline: true }
+          );
+
+        await interaction.update({ embeds: [updated] });
+        return;
+      }
+
+      // START (solo dueño)
+      if (sub === 'start') {
+        if (interaction.user.id !== ownerId) {
+          return interaction.reply({
+            ephemeral: true,
+            embeds: [new EmbedBuilder().setColor(0xE74C3C).setDescription('Solo quien creó el sorteo puede iniciarlo.')]
+          });
+        }
+        if (entry.participants.length < 1) {
+          return interaction.reply({
+            ephemeral: true,
+            embeds: [new EmbedBuilder().setColor(0xE67E22).setDescription('No hay participantes suficientes.')]
+          });
+        }
+
+        // "animación" rápida: mostrar nombres cambiando
+        const spinList = entry.participants.map(p => `<@${p.id}>`);
+        let i = 0;
+        const spinMsg = await interaction.reply({
+          fetchReply: true,
+          embeds: [new EmbedBuilder().setColor(0x9B59B6).setTitle('Girando... 🎉')]
+        });
+
+        const interval = setInterval(async () => {
+          i = (i + 1) % spinList.length;
+          await interaction.editReply({
+            embeds: [new EmbedBuilder().setColor(0x9B59B6).setTitle('Girando... 🎉').setDescription(spinList[i])]
+          }).catch(() => {});
+        }, 200);
+
+        // parar después de ~4s y anunciar ganador
+        setTimeout(async () => {
+          clearInterval(interval);
+          const winner = entry.participants[Math.floor(Math.random() * entry.participants.length)];
+          const gcfg = getGuildConfig(interaction.guild.id);
+
+          // Editar mensaje original del sorteo
+          const final = EmbedBuilder.from(entry.baseEmbed)
+            .setColor(0x2ECC71)
+            .setTitle('¡Tenemos ganador! 🎉')
+            .setDescription(`**Felicidades <@${winner.id}>**, entre todos los participantes eres el ganador: **${entry.prize}**\n\nEntra a **<#${entry.claimChannelId || 'por-crear'}>** para reclamar tu premio.`)
+            .setFields({ name: 'Participantes', value: spinList.join(' '), inline: false });
+
+          // crear canal "ganador-<usuario>" en la categoría configurada
+          let createdChannel = null;
+          if (gcfg.giveawayCategoryId) {
+            try {
+              createdChannel = await interaction.guild.channels.create({
+                name: `ganador-${winner.tag.split('#')[0].toLowerCase().replace(/[^a-z0-9_-]/g,'')}`,
+                type: ChannelType.GuildText,
+                parent: gcfg.giveawayCategoryId,
+                permissionOverwrites: [
+                  { id: interaction.guild.roles.everyone.id, deny: [PermissionFlagsBits.ViewChannel] },
+                  { id: winner.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] },
+                  ...gcfg.giveawayManagerRoleIds.map(rid => ({
+                    id: rid,
+                    allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory, PermissionFlagsBits.ManageChannels]
+                  }))
+                ]
+              });
+            } catch (e) {
+              console.error(e);
+            }
+          }
+
+          // actualizar referencia de canal en el embed final
+          if (createdChannel) {
+            final.setDescription(`**Felicidades <@${winner.id}>**, entre todos los participantes eres el ganador: **${entry.prize}**\n\nEntra a **${createdChannel}** para reclamar tu premio.`);
+          } else {
+            final.addFields({ name: 'Nota', value: 'No hay categoría de sorteos configurada o no pude crear el canal.', inline: false });
+          }
+
+          await entry.message.edit({ embeds: [final], components: [] }).catch(() => {});
+
+          // mandar mensaje en el canal creado
+          if (createdChannel) {
+            await createdChannel.send({
+              embeds: [
+                new EmbedBuilder()
+                  .setColor(0x2ECC71)
+                  .setTitle('🎁 Canal de ganador')
+                  .setDescription(`¡Hola <@${winner.id}>! Usa este canal para coordinar tu premio: **${entry.prize}**`)
+              ]
+            }).catch(() => {});
+          }
+
+          // finalizar animación
+          await interaction.editReply({
+            embeds: [new EmbedBuilder().setColor(0x2ECC71).setTitle('¡Listo!').setDescription(`Ganador: <@${winner.id}>`)]
+          }).catch(() => {});
+
+          client.giveaways.delete(stamp);
+        }, 4000);
+
+        return;
+      }
+    }
+  }
 };
