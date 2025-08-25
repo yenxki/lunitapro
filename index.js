@@ -16,7 +16,7 @@ const client = new Client({
         GatewayIntentBits.GuildMembers,
         GatewayIntentBits.GuildMessages,
         GatewayIntentBits.MessageContent,
-        GatewayIntentBits.DirectMessages
+        GatewayIntentBits.GuildPresences
     ],
     partials: [Partials.Message, Partials.Channel, Partials.Reaction]
 });
@@ -24,35 +24,17 @@ const client = new Client({
 client.commands = new Collection();
 client.config = config;
 
+// Presencia inicial
+client.once("ready", () => {
+    client.user.setPresence({
+        activities: [{ name: `${config.prefix}help para ver mis comandos 🌸`, type: 0 }],
+        status: "online"
+    });
+    console.log(`Conectado como ${client.user.tag}`);
+});
+
 // Cargar comandos y eventos
 loadCommands(client, path.join(__dirname, "commands"));
 loadEvents(client, path.join(__dirname, "events"));
-
-// ✅ Validación permisos antes de ejecutar comando
-client.on("messageCreate", async (message) => {
-    if (!message.content.startsWith(config.prefix) || message.author.bot) return;
-
-    const args = message.content.slice(config.prefix.length).trim().split(/ +/);
-    const cmd = args.shift().toLowerCase();
-    const command = client.commands.get(cmd);
-    if (!command) return;
-
-    // Leer roles desde DB
-    const rolesDB = JSON.parse(fs.readFileSync("./database/roles.json", "utf8"));
-    const userId = message.author.id;
-
-    if (command.requiredRole) {
-        if (
-            (command.requiredRole === "owner" && !rolesDB.owners.includes(userId)) &&
-            (command.requiredRole === "admin" && !rolesDB.admins.includes(userId)) &&
-            (command.requiredRole === "mod" && !rolesDB.mods.includes(userId)) &&
-            (!rolesDB.roles[command.requiredRole] || !rolesDB.roles[command.requiredRole].includes(userId))
-        ) {
-            return message.reply("❌ No tienes permisos para usar este comando.");
-        }
-    }
-
-    await command.execute(client, message, args);
-});
 
 client.login(config.token);

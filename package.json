@@ -1,11 +1,8 @@
 {
-  "name": "lunita-bot",
-  "version": "1.0.0",
-  "type": "module",
-  "main": "index.js",
-  "scripts": { "start": "node index.js" },
   "dependencies": {
-    "discord.js": "^14.15.3",
-    "fs-extra": "^11.2.0"
+    "@discordjs/rest": "^2.6.0",
+    "discord-api-types": "^0.38.21",
+    "discord.js": "^14.22.1",
+    "node-fetch": "^3.3.2"
   }
 }
