@@ -1,0 +1,5 @@
+{
+  "pico": { "name": "Pico de minero", "price": 500 },
+  "espada": { "name": "Espada legendaria", "price": 1500 },
+  "coche": { "name": "Coche deportivo", "price": 10000 }
+}
