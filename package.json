@@ -1,12 +1,9 @@
 {
   "name": "lunita-bot",
   "version": "1.0.0",
-  "description": "Bot de Discord para Gerasaurio",
-  "main": "index.js",
   "type": "module",
-  "scripts": {
-    "start": "node index.js"
-  },
+  "main": "index.js",
+  "scripts": { "start": "node index.js" },
   "dependencies": {
     "discord.js": "^14.15.3",
     "fs-extra": "^11.2.0"
