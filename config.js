@@ -1,0 +1,4 @@
+module.exports = {
+    token: "MTQwMzE1NjUyNzg1ODA1NzMxNg.GTKDNy.yk_ghSVY7Lw2aFQ5n0gPsGDeL8vtw6W9nB0mh8",
+    defaultPrefix: "!"
+};

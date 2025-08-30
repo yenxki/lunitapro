@@ -1,0 +1,38 @@
+{
+    "programador": {
+        "min": 500,
+        "max": 1500,
+        "emoji": "💻",
+        "messages": [
+            "Has programado un bot y ganaste {money} 💰",
+            "Desarrollaste una web para un cliente y recibiste {money} 💰"
+        ]
+    },
+    "camarero": {
+        "min": 100,
+        "max": 500,
+        "emoji": "☕",
+        "messages": [
+            "Serviste cafés y obtuviste {money} 💰",
+            "Atendiste en el restaurante y recibiste {money} 💰"
+        ]
+    },
+    "limonero": {
+        "min": 50,
+        "max": 300,
+        "emoji": "🍋",
+        "messages": [
+            "Vendiste limonada y ganaste {money} 💰",
+            "Hiciste un stand de limonada y recibiste {money} 💰"
+        ]
+    },
+    "gamer": {
+        "min": 1000,
+        "max": 10000,
+        "emoji": "🎮",
+        "messages": [
+            "Participaste en un torneo de juegos y obtuviste {money} 💰",
+            "Ganaste partidas competitivas y recibiste {money} 💰"
+        ]
+    }
+}

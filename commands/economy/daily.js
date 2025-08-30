@@ -1,35 +1,48 @@
-const { EmbedBuilder } = require('discord.js');
-const fs = require('fs');
-const db = require('../../data/economy.json');
-const { formatNumber } = require('../../utils/formatter');
-const { checkCooldown } = require('../../utils/cooldown');
+const fs = require("fs");
+const { EmbedBuilder } = require("discord.js");
+const { abbreviateNumber } = require("../../handlers/utils");
+const { checkCooldown } = require("../../handlers/cooldowns");
 
 module.exports = {
-  name: 'daily',
-  aliases: ['diario'],
-  description: 'Recibe tu recompensa diaria.',
-  usage: '!daily',
-  run: (client, message) => {
-    const cooldownTime = 86400000; // 24 horas
-    const remaining = checkCooldown(message.author.id, 'daily', cooldownTime);
+    name: "daily",
+    aliases: [],
+    description: "Reclama tu recompensa diaria",
+    usage: "daily",
+    category: "Economy",
+    run: async (client, message, args, prefix) => {
+        const user = message.author;
+        const guildId = message.guild.id;
+        const cooldownTime = 24 * 60 * 60 * 1000; // 24 horas
 
-    if (remaining) {
-      const hours = Math.floor(remaining / 3600000);
-      const minutes = Math.floor((remaining % 3600000) / 60000);
-      return message.channel.send(`⏳ Debes esperar **${hours}h ${minutes}m** para reclamar de nuevo.`);
+        const timeLeft = checkCooldown(user.id, "daily", cooldownTime);
+        if (timeLeft) {
+            const hours = Math.floor(timeLeft / 3600000);
+            const minutes = Math.floor((timeLeft % 3600000) / 60000);
+            return message.channel.send({
+                embeds: [
+                    new EmbedBuilder()
+                        .setColor("Yellow")
+                        .setDescription(`${client.emojisData.info} Ya reclamaste tu daily. Vuelve en ${hours}h ${minutes}m.`)
+                ]
+            });
+        }
+
+        let eco = JSON.parse(fs.readFileSync("./data/economy.json", "utf8"));
+        if (!eco[guildId]) eco[guildId] = {};
+        if (!eco[guildId][user.id]) eco[guildId][user.id] = { wallet: 0, bank: 0 };
+
+        const amount = Math.floor(Math.random() * 500) + 500;
+        eco[guildId][user.id].wallet += amount;
+
+        fs.writeFileSync("./data/economy.json", JSON.stringify(eco, null, 4));
+
+        message.channel.send({
+            embeds: [
+                new EmbedBuilder()
+                    .setTitle(`${client.emojisData.success} Recompensa diaria`)
+                    .setColor("Green")
+                    .setDescription(`Has recibido **${abbreviateNumber(amount)} 💰**!\nTu billetera ahora tiene \`${abbreviateNumber(eco[guildId][user.id].wallet)} 💰\``)
+            ]
+        });
     }
-
-    const reward = Math.floor(Math.random() * 1000) + 500;
-
-    if (!db[message.author.id]) db[message.author.id] = { money: 0, inventory: [] };
-    db[message.author.id].money += reward;
-    fs.writeFileSync('./data/economy.json', JSON.stringify(db, null, 2));
-
-    const embed = new EmbedBuilder()
-      .setColor('#F59E0B')
-      .setDescription(`🎁 Has reclamado tu recompensa diaria: **${formatNumber(reward)}** monedas.`)
-      .setFooter({ text: `Saldo actual: ${formatNumber(db[message.author.id].money)}` });
-
-    message.channel.send({ embeds: [embed] });
-  },
 };

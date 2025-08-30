@@ -1,36 +1,64 @@
-const { EmbedBuilder } = require('discord.js');
-const fs = require('fs');
-const db = require('../../data/economy.json');
-const { formatNumber } = require('../../utils/formatter');
-const { checkCooldown } = require('../../utils/cooldown');
+const { EmbedBuilder } = require("discord.js");
+const fs = require("fs");
+const { abbreviateNumber } = require("../../handlers/utils");
+
+const workCooldowns = new Map();
 
 module.exports = {
-  name: 'work',
-  aliases: ['trabajar'],
-  description: 'Trabaja y gana dinero con cooldown.',
-  usage: '!work',
-  run: (client, message) => {
-    const cooldownTime = 3600000; // 1 hora
-    const remaining = checkCooldown(message.author.id, 'work', cooldownTime);
+    name: "work",
+    aliases: [],
+    description: "Gana dinero trabajando",
+    usage: "work",
+    category: "Economy",
+    run: async (client, message, args) => {
 
-    if (remaining) {
-      const minutes = Math.floor(remaining / 60000);
-      return message.channel.send(`⏳ Debes esperar **${minutes} minutos** para volver a trabajar.`);
+        const userId = message.author.id;
+        const now = Date.now();
+        const cooldownAmount = 30 * 60 * 1000; // 30 minutos
+
+        if (workCooldowns.has(userId)) {
+            const expirationTime = workCooldowns.get(userId) + cooldownAmount;
+            if (now < expirationTime) {
+                const remaining = Math.ceil((expirationTime - now) / 60000);
+                return message.channel.send({
+                    embeds: [
+                        new EmbedBuilder()
+                            .setColor("Yellow")
+                            .setDescription(`⏳ Debes esperar ${remaining} minuto(s) antes de trabajar de nuevo.`)
+                    ]
+                });
+            }
+        }
+
+        workCooldowns.set(userId, now);
+        setTimeout(() => workCooldowns.delete(userId), cooldownAmount);
+
+        const guildId = message.guild.id;
+        let eco = JSON.parse(fs.readFileSync("./data/economy.json", "utf8"));
+        if (!eco[guildId]) eco[guildId] = {};
+        if (!eco[guildId][userId]) eco[guildId][userId] = { wallet: 0, bank: 0 };
+
+        // Cargar trabajos
+        const jobs = JSON.parse(fs.readFileSync("./data/workJobs.json", "utf8"));
+        const jobKeys = Object.keys(jobs);
+        const chosenJobKey = jobKeys[Math.floor(Math.random() * jobKeys.length)];
+        const job = jobs[chosenJobKey];
+
+        // Ganancia aleatoria según rango del trabajo
+        const earnings = Math.floor(Math.random() * (job.max - job.min + 1)) + job.min;
+        eco[guildId][userId].wallet += earnings;
+        fs.writeFileSync("./data/economy.json", JSON.stringify(eco, null, 4));
+
+        // Mensaje aleatorio del trabajo
+        const messageTemplate = job.messages[Math.floor(Math.random() * job.messages.length)];
+        const finalMessage = messageTemplate.replace("{money}", abbreviateNumber(earnings));
+
+        // Embed profesional
+        const embed = new EmbedBuilder()
+            .setColor("Green")
+            .setTitle(`${job.emoji} Trabajo completado`)
+            .setDescription(`${finalMessage}\nTu billetera ahora tiene \`${abbreviateNumber(eco[guildId][userId].wallet)} 💰\``);
+
+        message.channel.send({ embeds: [embed] });
     }
-
-    const jobs = ['Streamer', 'Creador de memes', 'Programador', 'Minero de Bitcoin', 'Youtuber'];
-    const job = jobs[Math.floor(Math.random() * jobs.length)];
-    const earnings = Math.floor(Math.random() * 500) + 200;
-
-    if (!db[message.author.id]) db[message.author.id] = { money: 0, inventory: [] };
-    db[message.author.id].money += earnings;
-    fs.writeFileSync('./data/economy.json', JSON.stringify(db, null, 2));
-
-    const embed = new EmbedBuilder()
-      .setColor('#3B82F6')
-      .setDescription(`👔 Trabajaste como **${job}** y ganaste **${formatNumber(earnings)}** monedas.`)
-      .setFooter({ text: `Saldo actual: ${formatNumber(db[message.author.id].money)}` });
-
-    message.channel.send({ embeds: [embed] });
-  },
 };
