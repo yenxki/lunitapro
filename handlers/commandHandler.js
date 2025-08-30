@@ -1,16 +1,12 @@
 const fs = require("fs");
 
 module.exports = (client) => {
-    for (const category of fs.readdirSync("./commands/")) {
-        const commands = fs.readdirSync(`./commands/${category}`).filter(file => file.endsWith(".js"));
-        for (const file of commands) {
-            const command = require(`../commands/${category}/${file}`);
-            if (!command.name) continue; // Evitar comandos mal formateados
-            command.category = category;
-            client.commands.set(command.name, command);
-            if (command.aliases && command.aliases.length) {
-                command.aliases.forEach(alias => client.aliases.set(alias, command.name));
-            }
+    const folders = fs.readdirSync("./commands");
+    for(const folder of folders){
+        const files = fs.readdirSync(`./commands/${folder}`).filter(f=>f.endsWith(".js"));
+        for(const file of files){
+            const cmd = require(`../commands/${folder}/${file}`);
+            if(cmd.name) client.commands.set(cmd.name,cmd);
         }
     }
 };

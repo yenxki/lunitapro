@@ -1,29 +1,31 @@
-const fs = require("fs");
 const { EmbedBuilder } = require("discord.js");
+const fs = require("fs");
 const { abbreviateNumber } = require("../../handlers/utils");
 
 module.exports = {
     name: "balance",
-    aliases: ["bal", "money"],
-    description: "Muestra tu saldo actual",
-    usage: "balance [@usuario]",
+    aliases: ["bal"],
+    description: "Muestra tu saldo de wallet y banco",
+    usage: "balance",
     category: "Economy",
-    run: async (client, message, args, prefix) => {
-        const user = message.mentions.users.first() || message.author;
-        const guildId = message.guild.id;
+    run: async(client, message) => {
+        const ecoFile = "./data/economy.json";
+        let eco = JSON.parse(fs.readFileSync(ecoFile,"utf8"));
 
-        let eco = JSON.parse(fs.readFileSync("./data/economy.json", "utf8"));
-        if (!eco[guildId]) eco[guildId] = {};
-        if (!eco[guildId][user.id]) eco[guildId][user.id] = { wallet: 0, bank: 0 };
+        if(!eco[message.guild.id] || !eco[message.guild.id][message.author.id]){
+            eco[message.guild.id] = eco[message.guild.id] || {};
+            eco[message.guild.id][message.author.id] = { wallet: 0, bank: 0 };
+            fs.writeFileSync(ecoFile, JSON.stringify(eco,null,4));
+        }
 
-        const data = eco[guildId][user.id];
-
+        const userEco = eco[message.guild.id][message.author.id];
         const embed = new EmbedBuilder()
-            .setTitle(`${client.emojisData.star || ""} Economía de ${user.tag}`)
+            .setTitle("💰 Tu balance")
             .setColor("Blue")
-            .setDescription(`**Saldo en billetera:** \`${abbreviateNumber(data.wallet)} 💰\`\n**Saldo en banco:** \`${abbreviateNumber(data.bank)} 🏦\``)
-            .setFooter({ text: `Usa ${prefix}help para más comandos de economía` });
-
+            .addFields(
+                { name: "Wallet", value: `${abbreviateNumber(userEco.wallet)} 💰`, inline: true },
+                { name: "Bank", value: `${abbreviateNumber(userEco.bank)} 🏦`, inline: true }
+            );
         message.channel.send({ embeds: [embed] });
     }
 };

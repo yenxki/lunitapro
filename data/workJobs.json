@@ -27,8 +27,8 @@
         ]
     },
     "gamer": {
-        "min": 1000,
-        "max": 10000,
+        "min": 200,
+        "max": 800,
         "emoji": "🎮",
         "messages": [
             "Participaste en un torneo de juegos y obtuviste {money} 💰",

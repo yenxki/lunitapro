@@ -1,9 +1,9 @@
-module.exports = {
-    abbreviateNumber: function(num) {
-        if (num >= 1e12) return (num / 1e12).toFixed(1) + "T";
-        if (num >= 1e9) return (num / 1e9).toFixed(1) + "B";
-        if (num >= 1e6) return (num / 1e6).toFixed(1) + "M";
-        if (num >= 1e3) return (num / 1e3).toFixed(1) + "K";
-        return num.toString();
-    }
+function abbreviateNumber(value){
+    if(value>=1e12) return (value/1e12).toFixed(2)+"T";
+    if(value>=1e9) return (value/1e9).toFixed(2)+"B";
+    if(value>=1e6) return (value/1e6).toFixed(2)+"M";
+    if(value>=1e3) return (value/1e3).toFixed(2)+"K";
+    return value.toString();
 }
+
+module.exports = { abbreviateNumber };

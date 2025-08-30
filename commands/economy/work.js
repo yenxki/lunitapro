@@ -6,59 +6,44 @@ const workCooldowns = new Map();
 
 module.exports = {
     name: "work",
-    aliases: [],
     description: "Gana dinero trabajando",
-    usage: "work",
     category: "Economy",
-    run: async (client, message, args) => {
+    run: async (client, message) => {
 
         const userId = message.author.id;
         const now = Date.now();
-        const cooldownAmount = 30 * 60 * 1000; // 30 minutos
+        const cooldown = 30*60*1000;
 
-        if (workCooldowns.has(userId)) {
-            const expirationTime = workCooldowns.get(userId) + cooldownAmount;
-            if (now < expirationTime) {
-                const remaining = Math.ceil((expirationTime - now) / 60000);
-                return message.channel.send({
-                    embeds: [
-                        new EmbedBuilder()
-                            .setColor("Yellow")
-                            .setDescription(`⏳ Debes esperar ${remaining} minuto(s) antes de trabajar de nuevo.`)
-                    ]
-                });
-            }
+        if(workCooldowns.has(userId) && now<workCooldowns.get(userId)+cooldown){
+            const remaining = Math.ceil((workCooldowns.get(userId)+cooldown-now)/60000);
+            return message.channel.send({ embeds:[new EmbedBuilder().setColor("Yellow").setDescription(`⏳ Espera ${remaining} minuto(s) para volver a trabajar.`)] });
         }
 
         workCooldowns.set(userId, now);
-        setTimeout(() => workCooldowns.delete(userId), cooldownAmount);
 
-        const guildId = message.guild.id;
-        let eco = JSON.parse(fs.readFileSync("./data/economy.json", "utf8"));
-        if (!eco[guildId]) eco[guildId] = {};
-        if (!eco[guildId][userId]) eco[guildId][userId] = { wallet: 0, bank: 0 };
+        const ecoFile = "./data/economy.json";
+        const jobsFile = "./data/workJobs.json";
+        let eco = JSON.parse(fs.readFileSync(ecoFile,"utf8"));
+        if(!eco[message.guild.id]) eco[message.guild.id]={};
+        if(!eco[message.guild.id][userId]) eco[message.guild.id][userId]={wallet:0,bank:0};
 
-        // Cargar trabajos
-        const jobs = JSON.parse(fs.readFileSync("./data/workJobs.json", "utf8"));
-        const jobKeys = Object.keys(jobs);
-        const chosenJobKey = jobKeys[Math.floor(Math.random() * jobKeys.length)];
-        const job = jobs[chosenJobKey];
+        const jobs = JSON.parse(fs.readFileSync(jobsFile,"utf8"));
+        const keys = Object.keys(jobs);
+        const jobKey = keys[Math.floor(Math.random()*keys.length)];
+        const job = jobs[jobKey];
 
-        // Ganancia aleatoria según rango del trabajo
-        const earnings = Math.floor(Math.random() * (job.max - job.min + 1)) + job.min;
-        eco[guildId][userId].wallet += earnings;
-        fs.writeFileSync("./data/economy.json", JSON.stringify(eco, null, 4));
+        const earnings = Math.floor(Math.random()*(job.max-job.min+1))+job.min;
+        eco[message.guild.id][userId].wallet += earnings;
+        fs.writeFileSync(ecoFile, JSON.stringify(eco,null,4));
 
-        // Mensaje aleatorio del trabajo
-        const messageTemplate = job.messages[Math.floor(Math.random() * job.messages.length)];
-        const finalMessage = messageTemplate.replace("{money}", abbreviateNumber(earnings));
+        const msgTemplate = job.messages[Math.floor(Math.random()*job.messages.length)].replace("{money}", abbreviateNumber(earnings));
 
-        // Embed profesional
-        const embed = new EmbedBuilder()
-            .setColor("Green")
-            .setTitle(`${job.emoji} Trabajo completado`)
-            .setDescription(`${finalMessage}\nTu billetera ahora tiene \`${abbreviateNumber(eco[guildId][userId].wallet)} 💰\``);
-
-        message.channel.send({ embeds: [embed] });
+        message.channel.send({
+            embeds:[new EmbedBuilder()
+                .setColor("Green")
+                .setTitle(`${job.emoji} Trabajo completado`)
+                .setDescription(`${msgTemplate}\nWallet: \`${abbreviateNumber(eco[message.guild.id][userId].wallet)} 💰\``)
+            ]
+        });
     }
 };
