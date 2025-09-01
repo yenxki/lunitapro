@@ -1,19 +1,17 @@
 {
-  "name": "lunitapro",
+  "name": "lunita-bot",
   "version": "1.0.0",
-  "description": "Bot de Discord para Gerasaurio con economía, trivia y redes sociales",
+  "description": "Bot Lunita para Gerasaurio",
   "main": "index.js",
+  "engines": {
+    "node": ">=16.9.0"
+  },
   "scripts": {
     "start": "node index.js"
   },
-  "author": "Senseia",
-  "license": "MIT",
   "dependencies": {
-    "discord.js": "^14.13.0",
+    "discord.js": "^14.12.0",
     "fs-extra": "^11.1.1",
-    "dotenv": "^16.3.1"
-  },
-  "engines": {
-    "node": ">=18.0.0"
+    "ms": "^2.2.2"
   }
 }

@@ -1,31 +1,21 @@
-const { EmbedBuilder } = require("discord.js");
-const fs = require("fs");
-const { abbreviateNumber } = require("../../handlers/utils");
+const { abbreviate, loadEconomy } = require("../../utils/economy");
 
 module.exports = {
-    name: "balance",
-    aliases: ["bal"],
-    description: "Muestra tu saldo de wallet y banco",
-    usage: "balance",
-    category: "Economy",
-    run: async(client, message) => {
-        const ecoFile = "./data/economy.json";
-        let eco = JSON.parse(fs.readFileSync(ecoFile,"utf8"));
+  name: "balance",
+  description: "Muestra tu balance de LuluCoins.",
+  category: "Economia",
+  async execute({ client, message, args, createEmbed }) {
+    const data = loadEconomy();
+    const userId = message.author.id;
 
-        if(!eco[message.guild.id] || !eco[message.guild.id][message.author.id]){
-            eco[message.guild.id] = eco[message.guild.id] || {};
-            eco[message.guild.id][message.author.id] = { wallet: 0, bank: 0 };
-            fs.writeFileSync(ecoFile, JSON.stringify(eco,null,4));
-        }
+    const balance = data[userId] || 0;
 
-        const userEco = eco[message.guild.id][message.author.id];
-        const embed = new EmbedBuilder()
-            .setTitle("💰 Tu balance")
-            .setColor("Blue")
-            .addFields(
-                { name: "Wallet", value: `${abbreviateNumber(userEco.wallet)} 💰`, inline: true },
-                { name: "Bank", value: `${abbreviateNumber(userEco.bank)} 🏦`, inline: true }
-            );
-        message.channel.send({ embeds: [embed] });
-    }
+    const embed = createEmbed(
+      message.guild,
+      `\`\`\`Tu balance actual es: ${client.config.economyEmoji} ${abbreviate(balance)} LuluCoins\`\`\``,
+      "💰 Balance"
+    );
+
+    message.channel.send({ embeds: [embed] });
+  }
 };

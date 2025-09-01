@@ -1,4 +1,8 @@
 {
-    "token": "MTQwMzE1NjUyNzg1ODA1NzMxNg.GTKDNy.yk_ghSVY7Lw2aFQ5n0gPsGDeL8vtw6W9nB0mh8",
-    "defaultPrefix": "!"
+  "token": "MTQwMzE1NjUyNzg1ODA1NzMxNg.GD1frg.bGJ2BOUhZuSVNeUtgQD-StL_rRNjQ1TzfDAF1U",
+  "prefix": "!",
+  "ownerID": "TU_ID",
+  "defaultCooldown": 5,
+  "logChannelId": "1411955426504736869",
+  "economyEmoji": "🪙"
 }

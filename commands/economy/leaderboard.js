@@ -1,29 +1,33 @@
-const { EmbedBuilder } = require("discord.js");
-const fs = require("fs");
-const { abbreviateNumber } = require("../../handlers/utils");
+const { abbreviate, loadEconomy } = require("../../utils/economy");
 
 module.exports = {
-    name: "leaderboard",
-    aliases: ["lb"],
-    description: "Muestra el ranking de riqueza del servidor",
-    usage: "leaderboard",
-    category: "Economy",
-    run: async(client,message) => {
-        const ecoFile = "./data/economy.json";
-        let eco = JSON.parse(fs.readFileSync(ecoFile,"utf8"));
-        if(!eco[message.guild.id]) return message.channel.send("❌ No hay datos de economía en este servidor.");
+  name: "leaderboard",
+  description: "Muestra los usuarios con más LuluCoins.",
+  category: "Economia",
+  async execute({ client, message, createEmbed }) {
+    const data = loadEconomy();
 
-        const sorted = Object.entries(eco[message.guild.id])
-            .map(([userId,data])=>({ userId, total: data.wallet+data.bank }))
-            .sort((a,b)=>b.total-a.total)
-            .slice(0,10);
+    // Convertimos el objeto en array y ordenamos por coins descendente
+    const sorted = Object.entries(data)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 10); // Top 10
 
-        const embed = new EmbedBuilder()
-            .setTitle("🏆 Leaderboard")
-            .setColor("Gold")
-            .setDescription(
-                sorted.map((u,i)=>`${i+1}. <@${u.userId}> - ${abbreviateNumber(u.total)} 💰`).join("\n")
-            );
-        message.channel.send({ embeds:[embed] });
+    if (sorted.length === 0) {
+      return message.channel.send({ embeds: [createEmbed(message.guild, "No hay datos de LuluCoins aún.", "💰 Leaderboard")] });
     }
+
+    // Formateamos la lista
+    const leaderboard = await Promise.all(sorted.map(async ([userId, coins], index) => {
+      const user = await client.users.fetch(userId).catch(() => ({ tag: "Usuario no encontrado" }));
+      return `\`${index + 1}.\` **${user.tag}** - ${client.config.economyEmoji} ${abbreviate(coins)}`;
+    }));
+
+    const embed = createEmbed(
+      message.guild,
+      leaderboard.join("\n"),
+      "🏆 Top 10 LuluCoins"
+    );
+
+    message.channel.send({ embeds: [embed] });
+  }
 };

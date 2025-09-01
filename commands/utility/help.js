@@ -1,55 +1,64 @@
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
-const fs = require("fs");
+const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
 
 module.exports = {
-    name: "help",
-    aliases: ["h"],
-    description: "Muestra todos los comandos disponibles con categorías, uso y aliases",
-    usage: "help [comando]",
-    category: "Utility",
-    run: async(client, message, args, prefix) => {
-        const commands = client.commands;
+  name: "help",
+  description: "Muestra todos los comandos disponibles con navegación por botones",
+    category: "Todos",
+  async execute({ client, message, args, createEmbed }) {
 
-        if(args[0]){
-            const cmd = commands.get(args[0]) || commands.find(c => c.aliases && c.aliases.includes(args[0]));
-            if(!cmd) return message.channel.send(`❌ Comando no encontrado.`);
-            const embed = new EmbedBuilder()
-                .setTitle(`Comando: ${cmd.name}`)
-                .setColor("Blue")
-                .addFields(
-                    {name:"Descripción", value: cmd.description || "No tiene descripción"},
-                    {name:"Uso", value: `\`${prefix}${cmd.usage}\`` || "No definido"},
-                    {name:"Categoría", value: cmd.category || "No definida"},
-                    {name:"Aliases", value: cmd.aliases.length>0 ? cmd.aliases.join(", ") : "Ninguna"}
-                );
-            return message.channel.send({embeds:[embed]});
-        }
+    // Agrupar comandos por categoría
+    const categories = {};
+    client.commands.forEach(cmd => {
+      const category = cmd.category || "Sin categoría";
+      if (!categories[category]) categories[category] = [];
+      categories[category].push(`\`${client.prefix}${cmd.name}\` - ${cmd.description}`);
+    });
 
-        // Agrupar comandos por categoría
-        const categories = {};
-        commands.forEach(cmd => {
-            const cat = cmd.category || "Sin categoría";
-            if(!categories[cat]) categories[cat] = [];
-            categories[cat].push(cmd.name);
-        });
+    const categoryEntries = Object.entries(categories);
+    if (categoryEntries.length === 0) return;
 
-        const embed = new EmbedBuilder()
-            .setTitle("📜 Menú de comandos")
-            .setColor("Blue")
-            .setDescription(`Prefijo actual: \`${prefix}\`\nHaz \`${prefix}help <comando>\` para más info.`);
+    const pages = categoryEntries.map(([cat, cmds]) => {
+      return createEmbed(
+        message.guild,
+        cmds.join("\n"),
+        `${client.emojisJSON[cat] || "⭐"} ${cat}`
+      );
+    });
 
-        for(const cat in categories){
-            embed.addFields({name: cat, value: categories[cat].join(", "), inline:false});
-        }
+    let currentPage = 0;
 
-        // Botones de categorías (solo ilustrativo, pueden abrir más embeds o links si quieres)
-        const row = new ActionRowBuilder()
-            .addComponents(
-                new ButtonBuilder().setCustomId("help_fun").setLabel("Fun").setStyle(ButtonStyle.Primary),
-                new ButtonBuilder().setCustomId("help_economy").setLabel("Economy").setStyle(ButtonStyle.Primary),
-                new ButtonBuilder().setCustomId("help_util").setLabel("Utility").setStyle(ButtonStyle.Primary)
-            );
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId("prev")
+        .setStyle(ButtonStyle.Primary)
+        .setEmoji(client.emojisJSON["Arrow-left"]),
+      new ButtonBuilder()
+        .setCustomId("next")
+        .setStyle(ButtonStyle.Primary)
+        .setEmoji(client.emojisJSON["Arrow-right"])
+    );
 
-        message.channel.send({embeds:[embed], components:[row]});
-    }
+    const helpMessage = await message.channel.send({ embeds: [pages[currentPage]], components: [row] });
+
+    const collector = helpMessage.createMessageComponentCollector({
+      filter: i => i.user.id === message.author.id,
+      time: 120000
+    });
+
+    collector.on("collect", async i => {
+      if (!i.isButton()) return;
+
+      if (i.customId === "prev") currentPage = currentPage > 0 ? currentPage - 1 : pages.length - 1;
+      if (i.customId === "next") currentPage = currentPage < pages.length - 1 ? currentPage + 1 : 0;
+
+      await i.update({ embeds: [pages[currentPage]] });
+    });
+
+    collector.on("end", async () => {
+      const disabledRow = new ActionRowBuilder().addComponents(
+        row.components.map(c => c.setDisabled(true))
+      );
+      helpMessage.edit({ components: [disabledRow] }).catch(() => {});
+    });
+  }
 };
