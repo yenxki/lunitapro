@@ -4,5 +4,6 @@
   "ownerID": "TU_ID",
   "defaultCooldown": 5,
   "logChannelId": "1411955426504736869",
-  "economyEmoji": "🪙"
+  "economyEmoji": "🪙",
+  "welcomeChannelId": "1412082673199087696"
 }
