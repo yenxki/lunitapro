@@ -30,6 +30,6 @@ module.exports = {
       })
       .setTimestamp();
 
-    channel.send({ content: `${emojis.Star} ¡Bienvenido ${member.user}!`, embeds: [embed] });
+    channel.send({ content: `${emojis.star} ¡Bienvenido ${member.user}!`, embeds: [embed] });
   }
 };
