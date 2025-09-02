@@ -9,7 +9,11 @@ const {
 } = require("discord.js");
 const config = require("../config.json");
 
-const forbiddenWords = ["idiota","imbecil","pendejo","malparido","hdp","mierda","estupido","perra","puto","puta","cabrón","bastardo"];
+const forbiddenWords = [
+  "idiota","imbecil","pendejo","malparido","hdp",
+  "mierda","estupido","perra","puto","puta",
+  "cabrón","bastardo"
+];
 
 module.exports = async (client, message) => {
   if (message.author.bot || !message.guild) return;
@@ -30,7 +34,9 @@ module.exports = async (client, message) => {
       "AutoWarn"
     );
 
-    message.channel.send({ embeds: [embed] }).then(msg => setTimeout(() => msg.delete().catch(() => {}), 60000));
+    message.channel.send({ embeds: [embed] }).then(msg => 
+      setTimeout(() => msg.delete().catch(() => {}), 60000)
+    );
 
     const member = message.guild.members.cache.get(userId);
     if (member && member.moderatable) {
@@ -40,7 +46,11 @@ module.exports = async (client, message) => {
     }
 
     sendLog(client, message.guild, embed);
-    addHistory(userId, { type: "AUTOWARN", reason: "Lenguaje inapropiado", moderator: "Sistema" });
+    addHistory(userId, {
+      type: "AUTOWARN",
+      reason: "Lenguaje inapropiado",
+      moderator: "Sistema",
+    });
   }
 
   // 🔹 Sistema de Sugerencias
@@ -59,17 +69,42 @@ module.exports = async (client, message) => {
 
     const embed = new EmbedBuilder()
       .setColor("#00bcd4")
-      .setAuthor({ name: `Nueva sugerencia de ${message.author.tag}`, iconURL: message.author.displayAvatarURL() })
+      .setAuthor({
+        name: `Nueva sugerencia de ${message.author.tag}`,
+        iconURL: message.author.displayAvatarURL(),
+      })
       .setDescription(`📢 **Sugerencia:**\n${suggestionText}`)
-      .addFields({ name: "Estado", value: "⏳ Pendiente de revisión por administradores." })
-      .setFooter({ text: `ID: ${message.id}`, iconURL: client.user.displayAvatarURL() })
+      .addFields({
+        name: "Estado",
+        value: "⏳ Pendiente de revisión por administradores.",
+      })
+      .setFooter({
+        text: `ID: ${message.id}`,
+        iconURL: client.user.displayAvatarURL(),
+      })
       .setTimestamp();
 
     const row = new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId(`vote_yes_${message.id}`).setLabel("Votar Sí").setStyle(ButtonStyle.Success).setEmoji("✅"),
-      new ButtonBuilder().setCustomId(`vote_no_${message.id}`).setLabel("Votar No").setStyle(ButtonStyle.Danger).setEmoji("❌"),
-      new ButtonBuilder().setCustomId(`approve_${message.id}`).setLabel("Aprobar").setStyle(ButtonStyle.Primary).setEmoji("🟢"),
-      new ButtonBuilder().setCustomId(`reject_${message.id}`).setLabel("Rechazar").setStyle(ButtonStyle.Secondary).setEmoji("🔴"),
+      new ButtonBuilder()
+        .setCustomId(`vote_yes_${message.id}`)
+        .setLabel("Votar Sí")
+        .setStyle(ButtonStyle.Success)
+        .setEmoji("✅"),
+      new ButtonBuilder()
+        .setCustomId(`vote_no_${message.id}`)
+        .setLabel("Votar No")
+        .setStyle(ButtonStyle.Danger)
+        .setEmoji("❌"),
+      new ButtonBuilder()
+        .setCustomId(`approve_${message.id}`)
+        .setLabel("Aprobar")
+        .setStyle(ButtonStyle.Primary)
+        .setEmoji("🟢"),
+      new ButtonBuilder()
+        .setCustomId(`reject_${message.id}`)
+        .setLabel("Rechazar")
+        .setStyle(ButtonStyle.Secondary)
+        .setEmoji("🔴")
     );
 
     return message.channel.send({ embeds: [embed], components: [row] });
@@ -83,27 +118,44 @@ module.exports = async (client, message) => {
   if (!command) return;
 
   const { defaultCooldown } = require("../config.json");
-  if (!client.cooldowns.has(command.name)) client.cooldowns.set(command.name, new Map());
+  if (!client.cooldowns.has(command.name))
+    client.cooldowns.set(command.name, new Map());
+
   const now = Date.now();
   const timestamps = client.cooldowns.get(command.name);
   const cooldownAmount = (command.cooldown || defaultCooldown) * 1000;
 
   if (!message.member.permissions.has("Administrator")) {
     if (timestamps.has(message.author.id)) {
-      const expirationTime = timestamps.get(message.author.id) + cooldownAmount;
+      const expirationTime =
+        timestamps.get(message.author.id) + cooldownAmount;
       if (now < expirationTime) {
         const timeLeft = Math.ceil((expirationTime - now) / 1000);
         return message.channel.send({
-          embeds: [client.createEmbed(message.guild, `⏳ Espera **${timeLeft}s** para volver a usar este comando.`, "Cooldown")]
+          embeds: [
+            client.createEmbed(
+              message.guild,
+              `⏳ Espera **${timeLeft}s** para volver a usar este comando.`,
+              "Cooldown"
+            ),
+          ],
         });
       }
     }
     timestamps.set(message.author.id, now);
-    setTimeout(() => timestamps.delete(message.author.id), cooldownAmount);
+    setTimeout(
+      () => timestamps.delete(message.author.id),
+      cooldownAmount
+    );
   }
 
   try {
-    await command.execute({ client, message, args, createEmbed: client.createEmbed });
+    await command.execute({
+      client,
+      message,
+      args,
+      createEmbed: client.createEmbed,
+    });
   } catch (err) {
     console.error(err);
   }

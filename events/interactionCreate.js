@@ -1,35 +1,96 @@
-const { EmbedBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } = require("discord.js");
+const fs = require("fs");
+const path = require("path");
+const {
+  ModalBuilder,
+  TextInputBuilder,
+  TextInputStyle,
+  ActionRowBuilder,
+  EmbedBuilder,
+  PermissionFlagsBits,
+} = require("discord.js");
 const config = require("../config.json");
+
+const suggestionsPath = path.join(__dirname, "../data/suggestions.json");
+
+function loadSuggestions() {
+  if (!fs.existsSync(suggestionsPath)) return {};
+  return JSON.parse(fs.readFileSync(suggestionsPath, "utf8"));
+}
+
+function saveSuggestions(data) {
+  fs.writeFileSync(suggestionsPath, JSON.stringify(data, null, 2));
+}
 
 module.exports = async (client, interaction) => {
   if (!interaction.isButton() && !interaction.isModalSubmit()) return;
 
-  // 🔹 Votos
-  if (interaction.isButton() && (interaction.customId.startsWith("vote_yes_") || interaction.customId.startsWith("vote_no_"))) {
+  // 🔹 Manejo de votos secretos
+  if (interaction.isButton() && interaction.customId.startsWith("vote_")) {
     const suggestionId = interaction.customId.split("_")[2];
-    const logChannel = interaction.guild.channels.cache.get(config.suggestionsLogChannelId);
-    if (!logChannel) return;
+    const logChannel = interaction.guild.channels.cache.get(
+      config.suggestionsLogChannelId
+    );
 
-    const voteType = interaction.customId.includes("yes") ? "✅ A FAVOR" : "❌ EN CONTRA";
-    logChannel.send(`📊 ${interaction.user.tag} votó **${voteType}** en la sugerencia con ID: ${suggestionId}`);
-    return interaction.reply({ content: "✅ Tu voto fue registrado (secreto).", ephemeral: true });
+    if (!logChannel) {
+      return interaction.reply({
+        content: "❌ No se encontró el canal de logs.",
+        ephemeral: true,
+      });
+    }
+
+    let suggestions = loadSuggestions();
+    if (!suggestions[suggestionId]) {
+      suggestions[suggestionId] = { yes: [], no: [] };
+    }
+
+    // 🔒 Validar si ya votó
+    if (
+      suggestions[suggestionId].yes.includes(interaction.user.id) ||
+      suggestions[suggestionId].no.includes(interaction.user.id)
+    ) {
+      return interaction.reply({
+        content: "⚠️ Ya has votado en esta sugerencia.",
+        ephemeral: true,
+      });
+    }
+
+    if (interaction.customId.includes("yes")) {
+      suggestions[suggestionId].yes.push(interaction.user.id);
+    } else {
+      suggestions[suggestionId].no.push(interaction.user.id);
+    }
+
+    saveSuggestions(suggestions);
+
+    await logChannel.send(
+      `🗳️ **${interaction.user.tag}** votó en **${
+        interaction.customId.includes("yes") ? "✅ Sí" : "❌ No"
+      }** en la sugerencia \`${suggestionId}\`.`
+    );
+
+    return interaction.reply({
+      content: "✅ Tu voto ha sido registrado en secreto.",
+      ephemeral: true,
+    });
   }
 
-  // 🔹 Aprobar / Rechazar
+  // 🔹 Aprobar / Rechazar con modal
   if (interaction.isButton() && (interaction.customId.startsWith("approve_") || interaction.customId.startsWith("reject_"))) {
-    if (!interaction.member.permissions.has("Administrator"))
-      return interaction.reply({ content: "❌ Solo administradores pueden aprobar o rechazar sugerencias.", ephemeral: true });
+    if (!interaction.member.permissions.has(PermissionFlagsBits.Administrator)) {
+      return interaction.reply({
+        content: "❌ No tienes permisos para gestionar sugerencias.",
+        ephemeral: true,
+      });
+    }
 
-    const action = interaction.customId.startsWith("approve_") ? "Aprobar" : "Rechazar";
     const suggestionId = interaction.customId.split("_")[1];
-
     const modal = new ModalBuilder()
-      .setCustomId(`modal_${action.toLowerCase()}_${suggestionId}`)
-      .setTitle(`${action} sugerencia`);
+      .setCustomId(`${interaction.customId}_modal`)
+      .setTitle(interaction.customId.startsWith("approve") ? "Aprobar sugerencia" : "Rechazar sugerencia");
 
     const reasonInput = new TextInputBuilder()
       .setCustomId("reason")
-      .setLabel(`Explica por qué se ${action.toLowerCase()} la sugerencia`)
+      .setLabel("Razón")
       .setStyle(TextInputStyle.Paragraph)
       .setRequired(true);
 
@@ -37,28 +98,50 @@ module.exports = async (client, interaction) => {
     return interaction.showModal(modal);
   }
 
-  // 🔹 Manejo de Modal (aprobación / rechazo)
-  if (interaction.isModalSubmit() && (interaction.customId.startsWith("modal_approve_") || interaction.customId.startsWith("modal_reject_"))) {
-    const [_, action, suggestionId] = interaction.customId.split("_");
+  // 🔹 Procesar modal
+  if (interaction.isModalSubmit() && (interaction.customId.startsWith("approve_") || interaction.customId.startsWith("reject_"))) {
+    const suggestionId = interaction.customId.split("_")[1];
     const reason = interaction.fields.getTextInputValue("reason");
-    const channel = interaction.channel;
 
     try {
-      const msg = await channel.messages.fetch(suggestionId);
-      if (!msg) return interaction.reply({ content: "❌ No se encontró la sugerencia original.", ephemeral: true });
+      const suggestionChannel = interaction.guild.channels.cache.get(config.suggestionsChannelId);
+      const suggestionMessage = await suggestionChannel.messages.fetch(suggestionId).catch(() => null);
 
-      const embed = EmbedBuilder.from(msg.embeds[0]);
-      embed.fields = []; // limpiar estado viejo
+      if (!suggestionMessage) {
+        return interaction.reply({
+          content: "❌ No se encontró la sugerencia original.",
+          ephemeral: true,
+        });
+      }
+
+      const embed = EmbedBuilder.from(suggestionMessage.embeds[0]);
+
+      embed.data.fields = embed.data.fields.filter(f => f.name !== "Estado");
+
       embed.addFields({
         name: "Estado",
-        value: action === "approve" ? `✅ Aprobada\n📝 Razón: ${reason}` : `❌ Rechazada\n📝 Razón: ${reason}`,
+        value: interaction.customId.startsWith("approve")
+          ? `🟢 Aprobada\n**Razón:** ${reason}`
+          : `🔴 Rechazada\n**Razón:** ${reason}`,
       });
 
-      await msg.edit({ embeds: [embed], components: [] });
-      return interaction.reply({ content: `Sugerencia ${action === "approve" ? "aprobada" : "rechazada"} con éxito.`, ephemeral: true });
+      await suggestionMessage.edit({
+        embeds: [embed],
+        components: [], // Desactivamos botones (ya no se puede votar)
+      });
+
+      return interaction.reply({
+        content: `✅ Has ${
+          interaction.customId.startsWith("approve") ? "aprobado" : "rechazado"
+        } la sugerencia con razón: **${reason}**.`,
+        ephemeral: true,
+      });
     } catch (err) {
       console.error(err);
-      return interaction.reply({ content: "❌ Error al actualizar la sugerencia.", ephemeral: true });
+      return interaction.reply({
+        content: "❌ Hubo un error al procesar la sugerencia.",
+        ephemeral: true,
+      });
     }
   }
 };
