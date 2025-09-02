@@ -5,7 +5,7 @@ const emojis = require("../../emojis.json");
 module.exports = {
   name: "testwelcome",
   description: "Prueba cómo se vería el mensaje de bienvenida.",
-  category: "Utilidad",
+  category: "Admin",
   async execute({ client, message }) {
     const channel = message.guild.channels.cache.get(config.welcomeChannelId);
     if (!channel) return message.reply(`${emojis.error} No se encontró el canal de bienvenida configurado.`);

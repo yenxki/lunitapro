@@ -4,5 +4,7 @@
   "defaultCooldown": 5,
   "logChannelId": "1411955426504736869",
   "economyEmoji": "🪙",
-  "welcomeChannelId": "1412082673199087696"
+  "welcomeChannelId": "1412082673199087696",
+  "suggestionsChannelId": "ID_CANAL_SUGERENCIAS",
+  "suggestionsLogChannelId": "ID_CANAL_LOGS"
 }

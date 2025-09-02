@@ -1,8 +1,10 @@
 const fs = require("fs");
 const path = require("path");
 const { sendLog, addHistory } = require("../utils/logger");
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
+const config = require("../config.json");
 
-const forbiddenWords = ["idiota","imbecil","pendejo","malparido","hdp","mierda","estupido","perra","puto","puta","cabrón","bastardo",];
+const forbiddenWords = ["idiota","imbecil","pendejo","malparido","hdp","mierda","estupido","perra","puto","puta","cabrón","bastardo"];
 
 module.exports = async (client, message) => {
   if (message.author.bot || !message.guild) return;
@@ -34,6 +36,36 @@ module.exports = async (client, message) => {
 
     sendLog(client, message.guild, embed);
     addHistory(userId, { type: "AUTOWARN", reason: "Lenguaje inapropiado", moderator: "Sistema" });
+  }
+
+  // 🔹 Sistema de Sugerencias
+  if (message.channel.id === config.suggestionsChannelId) {
+    const suggestionText = message.content;
+    const wordCount = suggestionText.split(/\s+/).length;
+
+    if (wordCount > 100) {
+      await message.reply("❌ La sugerencia no puede tener más de 100 palabras.").then(msg => {
+        setTimeout(() => msg.delete().catch(() => {}), 5000);
+      });
+      return message.delete().catch(() => {});
+    }
+
+    await message.delete().catch(() => {});
+
+    const embed = new EmbedBuilder()
+      .setColor("#00bcd4")
+      .setAuthor({ name: `Nueva sugerencia de ${message.author.tag}`, iconURL: message.author.displayAvatarURL() })
+      .setDescription(`📢 **Sugerencia:**\n${suggestionText}`)
+      .addFields({ name: "Estado", value: "⏳ Pendiente de ser revisada por los administradores." })
+      .setFooter({ text: "Sistema de sugerencias", iconURL: client.user.displayAvatarURL() })
+      .setTimestamp();
+
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId("approve_suggestion").setLabel("Aprobar").setStyle(ButtonStyle.Success).setEmoji("✅"),
+      new ButtonBuilder().setCustomId("reject_suggestion").setLabel("Rechazar").setStyle(ButtonStyle.Danger).setEmoji("❌")
+    );
+
+    return message.channel.send({ embeds: [embed], components: [row] });
   }
 
   // 🔹 Command Handler
