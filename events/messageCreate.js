@@ -1,7 +1,12 @@
 const fs = require("fs");
 const path = require("path");
 const { sendLog, addHistory } = require("../utils/logger");
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
+const {
+  EmbedBuilder,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+} = require("discord.js");
 const config = require("../config.json");
 
 const forbiddenWords = ["idiota","imbecil","pendejo","malparido","hdp","mierda","estupido","perra","puto","puta","cabrón","bastardo"];
@@ -56,13 +61,15 @@ module.exports = async (client, message) => {
       .setColor("#00bcd4")
       .setAuthor({ name: `Nueva sugerencia de ${message.author.tag}`, iconURL: message.author.displayAvatarURL() })
       .setDescription(`📢 **Sugerencia:**\n${suggestionText}`)
-      .addFields({ name: "Estado", value: "⏳ Pendiente de ser revisada por los administradores." })
-      .setFooter({ text: "Sistema de sugerencias", iconURL: client.user.displayAvatarURL() })
+      .addFields({ name: "Estado", value: "⏳ Pendiente de revisión por administradores." })
+      .setFooter({ text: `ID: ${message.id}`, iconURL: client.user.displayAvatarURL() })
       .setTimestamp();
 
     const row = new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId("approve_suggestion").setLabel("Aprobar").setStyle(ButtonStyle.Success).setEmoji("✅"),
-      new ButtonBuilder().setCustomId("reject_suggestion").setLabel("Rechazar").setStyle(ButtonStyle.Danger).setEmoji("❌")
+      new ButtonBuilder().setCustomId(`vote_yes_${message.id}`).setLabel("Votar Sí").setStyle(ButtonStyle.Success).setEmoji("✅"),
+      new ButtonBuilder().setCustomId(`vote_no_${message.id}`).setLabel("Votar No").setStyle(ButtonStyle.Danger).setEmoji("❌"),
+      new ButtonBuilder().setCustomId(`approve_${message.id}`).setLabel("Aprobar").setStyle(ButtonStyle.Primary).setEmoji("🟢"),
+      new ButtonBuilder().setCustomId(`reject_${message.id}`).setLabel("Rechazar").setStyle(ButtonStyle.Secondary).setEmoji("🔴"),
     );
 
     return message.channel.send({ embeds: [embed], components: [row] });

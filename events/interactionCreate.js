@@ -1,77 +1,64 @@
-const { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, PermissionsBitField, EmbedBuilder } = require("discord.js");
+const { EmbedBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } = require("discord.js");
 const config = require("../config.json");
 
-module.exports = {
-  name: "interactionCreate",
-  async execute(interaction) {
-    if (!interaction.isButton() && !interaction.isModalSubmit()) return;
+module.exports = async (client, interaction) => {
+  if (!interaction.isButton() && !interaction.isModalSubmit()) return;
 
-    // ✅ Botón Aprobar
-    if (interaction.isButton() && interaction.customId === "approve_suggestion") {
-      if (!interaction.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
-        return interaction.reply({ content: "❌ Solo los administradores pueden aprobar sugerencias.", ephemeral: true });
-      }
+  // 🔹 Votos
+  if (interaction.isButton() && (interaction.customId.startsWith("vote_yes_") || interaction.customId.startsWith("vote_no_"))) {
+    const suggestionId = interaction.customId.split("_")[2];
+    const logChannel = interaction.guild.channels.cache.get(config.suggestionsLogChannelId);
+    if (!logChannel) return;
 
-      const modal = new ModalBuilder()
-        .setCustomId("approve_modal")
-        .setTitle("Aprobar sugerencia");
+    const voteType = interaction.customId.includes("yes") ? "✅ A FAVOR" : "❌ EN CONTRA";
+    logChannel.send(`📊 ${interaction.user.tag} votó **${voteType}** en la sugerencia con ID: ${suggestionId}`);
+    return interaction.reply({ content: "✅ Tu voto fue registrado (secreto).", ephemeral: true });
+  }
 
-      const reasonInput = new TextInputBuilder()
-        .setCustomId("approve_reason")
-        .setLabel("Motivo de la aprobación")
-        .setStyle(TextInputStyle.Paragraph)
-        .setPlaceholder("Escribe aquí el motivo por el cual apruebas la sugerencia...");
+  // 🔹 Aprobar / Rechazar
+  if (interaction.isButton() && (interaction.customId.startsWith("approve_") || interaction.customId.startsWith("reject_"))) {
+    if (!interaction.member.permissions.has("Administrator"))
+      return interaction.reply({ content: "❌ Solo administradores pueden aprobar o rechazar sugerencias.", ephemeral: true });
 
-      modal.addComponents(new ActionRowBuilder().addComponents(reasonInput));
-      return interaction.showModal(modal);
-    }
+    const action = interaction.customId.startsWith("approve_") ? "Aprobar" : "Rechazar";
+    const suggestionId = interaction.customId.split("_")[1];
 
-    // ❌ Botón Rechazar
-    if (interaction.isButton() && interaction.customId === "reject_suggestion") {
-      if (!interaction.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
-        return interaction.reply({ content: "❌ Solo los administradores pueden rechazar sugerencias.", ephemeral: true });
-      }
+    const modal = new ModalBuilder()
+      .setCustomId(`modal_${action.toLowerCase()}_${suggestionId}`)
+      .setTitle(`${action} sugerencia`);
 
-      const modal = new ModalBuilder()
-        .setCustomId("reject_modal")
-        .setTitle("Rechazar sugerencia");
+    const reasonInput = new TextInputBuilder()
+      .setCustomId("reason")
+      .setLabel(`Explica por qué se ${action.toLowerCase()} la sugerencia`)
+      .setStyle(TextInputStyle.Paragraph)
+      .setRequired(true);
 
-      const reasonInput = new TextInputBuilder()
-        .setCustomId("reject_reason")
-        .setLabel("Motivo del rechazo")
-        .setStyle(TextInputStyle.Paragraph)
-        .setPlaceholder("Escribe aquí el motivo por el cual rechazas la sugerencia...");
+    modal.addComponents(new ActionRowBuilder().addComponents(reasonInput));
+    return interaction.showModal(modal);
+  }
 
-      modal.addComponents(new ActionRowBuilder().addComponents(reasonInput));
-      return interaction.showModal(modal);
-    }
+  // 🔹 Manejo de Modal (aprobación / rechazo)
+  if (interaction.isModalSubmit() && (interaction.customId.startsWith("modal_approve_") || interaction.customId.startsWith("modal_reject_"))) {
+    const [_, action, suggestionId] = interaction.customId.split("_");
+    const reason = interaction.fields.getTextInputValue("reason");
+    const channel = interaction.channel;
 
-    // 📩 Modal Aprobado
-    if (interaction.isModalSubmit() && interaction.customId === "approve_modal") {
-      const reason = interaction.fields.getTextInputValue("approve_reason");
+    try {
+      const msg = await channel.messages.fetch(suggestionId);
+      if (!msg) return interaction.reply({ content: "❌ No se encontró la sugerencia original.", ephemeral: true });
 
-      const embed = EmbedBuilder.from(interaction.message.embeds[0])
-        .setColor("Green")
-        .spliceFields(0, 1, { name: "Estado", value: `✅ Aprobada por ${interaction.user.tag}\n📝 Motivo: ${reason}` });
+      const embed = EmbedBuilder.from(msg.embeds[0]);
+      embed.fields = []; // limpiar estado viejo
+      embed.addFields({
+        name: "Estado",
+        value: action === "approve" ? `✅ Aprobada\n📝 Razón: ${reason}` : `❌ Rechazada\n📝 Razón: ${reason}`,
+      });
 
-      await interaction.update({ embeds: [embed], components: [] });
-
-      const logChannel = interaction.guild.channels.cache.get(config.suggestionsLogChannelId);
-      if (logChannel) logChannel.send({ content: `✅ Sugerencia aprobada por ${interaction.user.tag}`, embeds: [embed] });
-    }
-
-    // 📩 Modal Rechazado
-    if (interaction.isModalSubmit() && interaction.customId === "reject_modal") {
-      const reason = interaction.fields.getTextInputValue("reject_reason");
-
-      const embed = EmbedBuilder.from(interaction.message.embeds[0])
-        .setColor("Red")
-        .spliceFields(0, 1, { name: "Estado", value: `❌ Rechazada por ${interaction.user.tag}\n📝 Motivo: ${reason}` });
-
-      await interaction.update({ embeds: [embed], components: [] });
-
-      const logChannel = interaction.guild.channels.cache.get(config.suggestionsLogChannelId);
-      if (logChannel) logChannel.send({ content: `❌ Sugerencia rechazada por ${interaction.user.tag}`, embeds: [embed] });
+      await msg.edit({ embeds: [embed], components: [] });
+      return interaction.reply({ content: `Sugerencia ${action === "approve" ? "aprobada" : "rechazada"} con éxito.`, ephemeral: true });
+    } catch (err) {
+      console.error(err);
+      return interaction.reply({ content: "❌ Error al actualizar la sugerencia.", ephemeral: true });
     }
   }
 };
