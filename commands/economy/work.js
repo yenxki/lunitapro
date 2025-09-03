@@ -3,7 +3,7 @@ const { abbreviate, loadEconomy, saveEconomy } = require("../../utils/economy");
 module.exports = {
   name: "work",
   description: "Trabaja para ganar LuluCoins.",
-  category: "Economy",
+  category: "Economia",
   cooldown: 60, // 1 minuto
   async execute({ client, message, args, createEmbed }) {
     // 🔹 Cooldown específico del comando
