@@ -5,11 +5,12 @@ module.exports = {
   description: "Intenta robar LuluCoins de otro usuario.",
   category: "Economia",
   cooldown: 120, // 2 minutos
+  // 🔹 Creamos un Map específico para este comando
+  _cooldowns: new Map(),
+
   async execute({ client, message, args, createEmbed }) {
-    // 🔹 Cooldown específico del comando
-    if (!client.cooldowns.has(this.name)) client.cooldowns.set(this.name, new Map());
     const now = Date.now();
-    const timestamps = client.cooldowns.get(this.name);
+    const timestamps = this._cooldowns; // Usamos el Map propio del comando
     const cooldownAmount = this.cooldown * 1000;
 
     if (!message.member.permissions.has("Administrator")) {

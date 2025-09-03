@@ -4,10 +4,10 @@ const { abbreviate, loadEconomy, saveEconomy } = require("../../utils/economy");
 // Preguntas aleatorias
 const questions = [
   { question: "¿Cuál es el cantante favorito de Gera?", answer: "Humbe" },
-  { question: "¿Cuál es la capital de Paris?", answer: "Paris" },
-  { question: "¿Qué color resulta de mezclar rojo y azul?", answer: "morado" },
-  { question: "¿Cuánto es 10 / 2?", answer: "5" },
-  { question: "¿En qué continente está Brasil?", answer: "américa" }
+  { question: "¿Labubu es el hijo de Gera?", answer: "Paris" },
+  { question: "¿Gera tiene canal de difusion de WhatsApp?", answer: "Si" },
+  { question: "(lo contrario de muchoyo)", answer: "Pocoyo" },
+  { question: "¿En una escala del 1 al 10 que tan fan es Gera de Humbe?", answer: "10" }
 ];
 
 // Cooldowns globales
