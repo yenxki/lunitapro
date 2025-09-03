@@ -7,7 +7,7 @@ module.exports = {
   cooldown: 60, // 1 minuto
   _cooldowns: new Map(), // 🔹 Cooldown propio del comando
 
-  async execute({ client, message, args, createEmbed }) {
+  async execute({ message, createEmbed, client }) {
     const now = Date.now();
     const timestamps = this._cooldowns;
     const cooldownAmount = this.cooldown * 1000;
