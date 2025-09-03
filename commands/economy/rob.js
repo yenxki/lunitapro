@@ -4,18 +4,16 @@ module.exports = {
   name: "rob",
   description: "Intenta robar LuluCoins de otro usuario.",
   category: "Economia",
-  cooldown: 120, // 2 minutos
-  // 🔹 Creamos un Map específico para este comando
-  _cooldowns: new Map(),
+  _enfriacion: new Map(), // 🔹 Sistema propio de cooldown
 
   async execute({ client, message, args, createEmbed }) {
     const now = Date.now();
-    const timestamps = this._cooldowns; // Usamos el Map propio del comando
+    const cooldowns = this._enfriacion;
     const cooldownAmount = this.cooldown * 1000;
 
     if (!message.member.permissions.has("Administrator")) {
-      if (timestamps.has(message.author.id)) {
-        const expirationTime = timestamps.get(message.author.id) + cooldownAmount;
+      if (cooldowns.has(message.author.id)) {
+        const expirationTime = cooldowns.get(message.author.id) + cooldownAmount;
         if (now < expirationTime) {
           const timeLeft = Math.ceil((expirationTime - now) / 1000);
           return message.channel.send({
@@ -23,11 +21,11 @@ module.exports = {
           });
         }
       }
-      timestamps.set(message.author.id, now);
-      setTimeout(() => timestamps.delete(message.author.id), cooldownAmount);
+      cooldowns.set(message.author.id, now);
+      setTimeout(() => cooldowns.delete(message.author.id), cooldownAmount);
     }
 
-    // 🔹 Lógica principal del comando
+    // 🔹 Lógica principal
     if (!args[0]) return message.channel.send({ embeds: [createEmbed(message.guild, "Debes mencionar a alguien para robar.", "❌ Error")] });
 
     const target = message.mentions.members.first();
@@ -39,7 +37,7 @@ module.exports = {
 
     if (!data[victim] || data[victim] <= 0) return message.channel.send({ embeds: [createEmbed(message.guild, "Esta persona no tiene LuluCoins.", "❌ Error")] });
 
-    // 🔹 Posibilidad de fallar 50%
+    // 🔹 Posibilidad de fallo 50%
     if (Math.random() < 0.5) {
       return message.channel.send({
         embeds: [createEmbed(message.guild, `❌ ${message.author.tag} intentó robar a ${target.user.tag}, pero falló!`, "Robo fallido")]
